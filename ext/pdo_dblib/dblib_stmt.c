@@ -236,104 +236,138 @@ static int pdo_dblib_stmt_get_col(pdo_stmt_t *stmt, int colno, char **ptr,
 	data_len = dbdatlen(H->link, colno+1);
 
 	if (data_len != 0 && data != NULL) {
-		switch (coltype) {
-			case SQLCHAR:
-			case SQLVARCHAR:
-			case SQLTEXT:
+		if (stmt->dbh->stringify) {
+			switch (coltype) {
+        case SQLDATETIME:
+				case SQLDATETIM4:
+				case SQLFLT4:
+				case SQLFLT8:
+				case SQLINT4:
+				case SQLINT2:
+				case SQLINT1:
+				case SQLBIT: {
+					if (dbwillconvert(coltype, SQLCHAR)) {
+						tmp_data_len = 32 + (2 * (data_len)); /* FIXME: We allocate more than we need here */
+						tmp_data = emalloc(tmp_data_len);
+						data_len = dbconvert(NULL, coltype, data, data_len, SQLCHAR, tmp_data, -1);
+
+						MAKE_STD_ZVAL(zv);
+						ZVAL_STRING(zv, tmp_data, 0);
+					}
+					break;
+        }
+			}
+		}
+
+		if (!zv) {
+			switch (coltype) {
+				case SQLCHAR:
+				case SQLVARCHAR:
+				case SQLTEXT:
 #if ilia_0
-				while (data_len>0 && data[data_len-1] == ' ') { // nuke trailing whitespace
-					data_len--;
-				}
+					while (data_len>0 && data[data_len-1] == ' ') { // nuke trailing whitespace
+						data_len--;
+					}
 #endif
-			case SQLVARBINARY:
-			case SQLBINARY:
-			case SQLIMAGE: {
-				MAKE_STD_ZVAL(zv);
-				if (!data_len) {
-					ZVAL_NULL(zv);
-				} else {
-					ZVAL_STRINGL(zv, data, data_len, 1);
+				case SQLVARBINARY:
+				case SQLBINARY:
+				case SQLIMAGE: {
+					MAKE_STD_ZVAL(zv);
+					if (!data_len) {
+						ZVAL_NULL(zv);
+					} else {
+						ZVAL_STRINGL(zv, data, data_len, 1);
+					}
+
+					break;
 				}
+				case SQLDATETIME:
+				case SQLDATETIM4: {
+					DBDATEREC dateinfo;
 
-				break;
-			}
-			case SQLDATETIME:
-			case SQLDATETIM4: {
-				DBDATEREC dateinfo;
+					if (coltype == SQLDATETIM4) {
+						DBDATETIME temp;
 
-				if (coltype == SQLDATETIM4) {
-					DBDATETIME temp;
+						dbconvert(NULL, SQLDATETIM4, data, -1, SQLDATETIME, (LPBYTE)&temp, -1);
+						dbdatecrack(H->link, &dateinfo, &temp);
+					} else {
+					  dbdatecrack(H->link, &dateinfo, (DBDATETIME *)data);
+					}
 
-					dbconvert(NULL, SQLDATETIM4, data, -1, SQLDATETIME, (LPBYTE)&temp, -1);
-					dbdatecrack(H->link, &dateinfo, &temp);
-				} else {
-				  dbdatecrack(H->link, &dateinfo, (DBDATETIME *)data);
-				}
-
-				spprintf(&tmp_data, 0, "%d-%02d-%02d %02d:%02d:%02d", dateinfo.year, dateinfo.month, dateinfo.day, dateinfo.hour, dateinfo.minute, dateinfo.second);
-
-				MAKE_STD_ZVAL(zv);
-				ZVAL_STRINGL(zv, tmp_data, 19, 0);
-
-				break;
-			}
-			case SQLFLT4:
-				MAKE_STD_ZVAL(zv);
-				ZVAL_DOUBLE(zv, (double) (*(DBFLT4 *) data));
-			case SQLFLT8: {
-				MAKE_STD_ZVAL(zv);
-				ZVAL_DOUBLE(zv, (double) (*(DBFLT8 *) data));
-
-				break;
-			}
-			case SQLINT4: {
-				MAKE_STD_ZVAL(zv);
-				ZVAL_LONG(zv, (long) ((int) *(DBINT *) data));
-
-				break;
-			}
-			case SQLINT2: {
-				MAKE_STD_ZVAL(zv);
-				ZVAL_LONG(zv, (long) ((int) *(DBSMALLINT *) data));
-
-				break;
-			}
-			case SQLINT1:
-			case SQLBIT: {
-				MAKE_STD_ZVAL(zv);
-				ZVAL_LONG(zv, (long) ((int) *(DBTINYINT *) data));
-
-				break;
-			}
-			case SQLMONEY:
-			case SQLMONEY4:
-			case SQLMONEYN: {
-				DBFLT8 money_value;
-				dbconvert(NULL, coltype, data, 8, SQLFLT8, (LPBYTE)&money_value, -1);
-
-				MAKE_STD_ZVAL(zv);
-				ZVAL_DOUBLE(zv, money_value);
-
-				break;
-			}
-#ifdef SQLUNIQUE
-			case SQLUNIQUE: {
-#else
-			case 36: { // FreeTDS hack
-#endif
-				MAKE_STD_ZVAL(zv);
-				ZVAL_STRINGL(zv, data, 16, 1); // uniqueidentifier is a 16-byte binary number
-
-				break;
-			}
-			default: {
-				if (dbwillconvert(coltype, SQLCHAR)) {
-					tmp_data_len = 32 + (2 * (data_len)); /* FIXME: We allocate more than we need here */
-					tmp_data = emalloc(tmp_data_len);
-					data_len = dbconvert(NULL, coltype, data, data_len, SQLCHAR, tmp_data, -1);
+					spprintf(&tmp_data, 0, "%d-%02d-%02d %02d:%02d:%02d", dateinfo.year, dateinfo.month, dateinfo.day, dateinfo.hour, dateinfo.minute, dateinfo.second);
 
 					MAKE_STD_ZVAL(zv);
-					ZVAL_STRING(zv, tmp_data, 0);
+					ZVAL_STRINGL(zv, tmp_data, 19, 0);
+
+					break;
+				}
+				case SQLFLT4: {
+					MAKE_STD_ZVAL(zv);
+					ZVAL_DOUBLE(zv, (double) (*(DBFLT4 *) data));
+
+					break;
+				}
+				case SQLFLT8: {
+					MAKE_STD_ZVAL(zv);
+					ZVAL_DOUBLE(zv, (double) (*(DBFLT8 *) data));
+
+					break;
+				}
+				case SQLINT4: {
+					MAKE_STD_ZVAL(zv);
+					ZVAL_LONG(zv, (long) ((int) *(DBINT *) data));
+
+					break;
+				}
+				case SQLINT2: {
+					MAKE_STD_ZVAL(zv);
+					ZVAL_LONG(zv, (long) ((int) *(DBSMALLINT *) data));
+
+					break;
+				}
+				case SQLINT1:
+				case SQLBIT: {
+					MAKE_STD_ZVAL(zv);
+					ZVAL_LONG(zv, (long) ((int) *(DBTINYINT *) data));
+
+					break;
+				}
+				case SQLMONEY:
+				case SQLMONEY4:
+				case SQLMONEYN: {
+					DBFLT8 money_value;
+					dbconvert(NULL, coltype, data, 8, SQLFLT8, (LPBYTE)&money_value, -1);
+
+					MAKE_STD_ZVAL(zv);
+
+					if (stmt->dbh->stringify) {
+						tmp_data_len = spprintf(&tmp_data, 0, "%.4f", money_value);
+						ZVAL_STRINGL(zv, tmp_data, tmp_data_len, 1);
+					} else {
+						ZVAL_DOUBLE(zv, money_value);
+					}
+
+					break;
+				}
+#ifdef SQLUNIQUE
+				case SQLUNIQUE: {
+#else
+				case 36: { // FreeTDS hack
+#endif
+					MAKE_STD_ZVAL(zv);
+					ZVAL_STRINGL(zv, data, 16, 1); // uniqueidentifier is a 16-byte binary number
+
+					break;
+				}
+				default: {
+					if (dbwillconvert(coltype, SQLCHAR)) {
+						tmp_data_len = 32 + (2 * (data_len)); /* FIXME: We allocate more than we need here */
+						tmp_data = emalloc(tmp_data_len);
+						data_len = dbconvert(NULL, coltype, data, data_len, SQLCHAR, tmp_data, -1);
+
+						MAKE_STD_ZVAL(zv);
+						ZVAL_STRING(zv, tmp_data, 0);
+					}
 				}
 			}
 		}
