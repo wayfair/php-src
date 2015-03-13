@@ -201,7 +201,6 @@ PHP_MINIT_FUNCTION(pdo_dblib)
 	dbsetifile()
 	dbsetmaxprocs()
 	dbsetlogintime()
-	dbsettime()
 	
 	 */
 
