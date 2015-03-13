@@ -200,6 +200,17 @@ static int dblib_handle_rollback(pdo_dbh_t *dbh TSRMLS_DC)
 	return pdo_dblib_transaction_cmd("ROLLBACK TRANSACTION", dbh TSRMLS_CC);
 }
 
+static int dblib_set_attribute(pdo_dbh_t *dbh, long attr, zval *val TSRMLS_DC)
+{
+	switch (attr) {
+		case PDO_ATTR_TIMEOUT:
+			convert_to_long(val);
+			return SUCCEED == dbsettime(Z_LVAL_P(val)) ? 1 : 0;
+		default:
+			return 0;
+	}
+}
+
 char *dblib_handle_last_id(pdo_dbh_t *dbh, const char *name, unsigned int *len TSRMLS_DC) 
 {
 	pdo_dblib_db_handle *H = (pdo_dblib_db_handle *)dbh->driver_data;
@@ -252,7 +263,7 @@ static struct pdo_dbh_methods dblib_methods = {
 	dblib_handle_begin, /* begin */
 	dblib_handle_commit, /* commit */
 	dblib_handle_rollback, /* rollback */
-	NULL, /*set attr */
+	dblib_set_attribute, /*set attr */
 	dblib_handle_last_id, /* last insert id */
 	dblib_fetch_error, /* fetch error */
 	NULL, /* get attr */
@@ -383,6 +394,11 @@ static int pdo_dblib_handle_factory(pdo_dbh_t *dbh, zval *driver_options TSRMLS_
 
 	/* allow double quoted indentifiers */
 	DBSETOPT(H->link, DBQUOTEDIDENT, "1");
+
+	if (driver_options) {
+		long connect_timeout = pdo_attr_lval(driver_options, PDO_ATTR_TIMEOUT, 30 TSRMLS_CC);
+		dbsettime(connect_timeout);
+	}
 
 	ret = 1;
 	dbh->max_escaped_char_length = 2;
