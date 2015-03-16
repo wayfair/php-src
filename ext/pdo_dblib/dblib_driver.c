@@ -42,15 +42,24 @@ static int dblib_fetch_error(pdo_dbh_t *dbh, pdo_stmt_t *stmt, zval *info TSRMLS
 	pdo_dblib_stmt *S = NULL;
 	char *message;
 	char *msg;
+	int is_general_message = 0;
 
 	if (stmt) {
 		S = (pdo_dblib_stmt*)stmt->driver_data;
 		einfo = &S->err;
 	}
 
-	if (einfo->dberr == SYBESMSG && einfo->lastmsg) {
+	// use severity to determine whether a message is "general"
+	// Severity Levels 11 through 16
+	// These messages indicate errors that can be corrected by the user.
+	// https://technet.microsoft.com/en-us/library/aa937483%28v=sql.80%29.aspx
+	if (einfo->severity && einfo->severity >= 11 && einfo->severity <= 16) {
+		is_general_message = 1;
+	}
+
+	if (is_general_message && einfo->lastmsg) {
 		msg = einfo->lastmsg;
-	} else if (einfo->dberr == SYBESMSG && DBLIB_G(err).lastmsg) {
+	} else if (is_general_message && DBLIB_G(err).lastmsg) {
 		msg = DBLIB_G(err).lastmsg;
 		DBLIB_G(err).lastmsg = NULL;
 	} else {
@@ -58,7 +67,7 @@ static int dblib_fetch_error(pdo_dbh_t *dbh, pdo_stmt_t *stmt, zval *info TSRMLS
 	}
 
 	spprintf(&message, 0, "%s [%d] (severity %d) [%s]",
-		msg, einfo->dberr, einfo->severity, stmt ? stmt->active_query_string : "");
+		msg, einfo->dberr, einfo->severity, (stmt && stmt->active_query_string) ? stmt->active_query_string : "");
 
 	add_next_index_long(info, einfo->dberr);
 	add_next_index_string(info, message, 0);
