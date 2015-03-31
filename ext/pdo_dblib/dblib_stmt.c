@@ -235,7 +235,7 @@ static int pdo_dblib_stmt_get_col(pdo_stmt_t *stmt, int colno, char **ptr,
 	data = dbdata(H->link, colno+1);
 	data_len = dbdatlen(H->link, colno+1);
 
-	if (data_len != 0 && data != NULL) {
+	if (data_len != 0 || data != NULL) {
 		if (stmt->dbh->stringify) {
 			switch (coltype) {
         case SQLDATETIME:
@@ -273,11 +273,7 @@ static int pdo_dblib_stmt_get_col(pdo_stmt_t *stmt, int colno, char **ptr,
 				case SQLBINARY:
 				case SQLIMAGE: {
 					MAKE_STD_ZVAL(zv);
-					if (!data_len) {
-						ZVAL_NULL(zv);
-					} else {
-						ZVAL_STRINGL(zv, data, data_len, 1);
-					}
+					ZVAL_STRINGL(zv, data, data_len, 1);
 
 					break;
 				}
