@@ -155,8 +155,12 @@ static int dblib_handle_quoter(pdo_dbh_t *dbh, const char *unquoted, int unquote
 	pdo_dblib_db_handle *H = (pdo_dblib_db_handle *)dbh->driver_data;
 	char *q;
 	int l = 1;
+	int is_simple_string = PDO_PARAM_TYPE(paramtype) == PDO_PARAM_STR_SIMPLE ? 1 : 0;
 
-	*quoted = q = safe_emalloc(2, unquotedlen, 3);
+	*quoted = q = safe_emalloc(2, unquotedlen, is_simple_string ? 3 : 4);
+	if (!is_simple_string) {
+		*q++ = 'N';
+	}
 	*q++ = '\'';
 
 	while (unquotedlen--) {
@@ -173,7 +177,7 @@ static int dblib_handle_quoter(pdo_dbh_t *dbh, const char *unquoted, int unquote
 
 	*q++ = '\'';
 	*q++ = '\0';
-	*quotedlen = l+1;
+	*quotedlen = l + (is_simple_string ? 1 : 2);
 	
 	return 1;
 }
