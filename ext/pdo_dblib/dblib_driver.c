@@ -381,6 +381,18 @@ static int pdo_dblib_handle_factory(pdo_dbh_t *dbh, zval *driver_options TSRMLS_
 	}
 #endif
 
+
+	if (driver_options) {
+		long connect_timeout = pdo_attr_lval(driver_options, PDO_DBLIB_ATTR_CONNECTION_TIMEOUT, 30 TSRMLS_CC);
+		dbsetlogintime(connect_timeout);
+		long query_timeout = pdo_attr_lval(driver_options, PDO_DBLIB_ATTR_QUERY_TIMEOUT, 0 TSRMLS_CC);
+		if (query_timeout == 0) {
+			/* PDO_ATTR_TIMEOUT will be phased out, but until then, falling back to it when PDO_DBLIB_ATTR_QUERY_TIMEOUT isn't defined */
+			query_timeout = pdo_attr_lval(driver_options, PDO_ATTR_TIMEOUT, 30 TSRMLS_CC);
+		}
+		dbsettime(query_timeout);
+	}
+
 	H->link = dbopen(H->login, vars[2].optval);
 
 	if (!H->link) {
@@ -407,11 +419,6 @@ static int pdo_dblib_handle_factory(pdo_dbh_t *dbh, zval *driver_options TSRMLS_
 
 	/* allow double quoted indentifiers */
 	DBSETOPT(H->link, DBQUOTEDIDENT, "1");
-
-	if (driver_options) {
-		long connect_timeout = pdo_attr_lval(driver_options, PDO_ATTR_TIMEOUT, 30 TSRMLS_CC);
-		dbsettime(connect_timeout);
-	}
 
 	ret = 1;
 	dbh->max_escaped_char_length = 2;
