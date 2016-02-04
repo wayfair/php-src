@@ -318,7 +318,7 @@ static int really_register_bound_param(struct pdo_bound_param_data *param, pdo_s
 		parameter = Z_REFVAL(param->parameter);
 	}
 
-	if (PDO_PARAM_TYPE(param->param_type) == PDO_PARAM_STR && param->max_value_len <= 0 && !Z_ISNULL_P(parameter)) {
+	if ((PDO_PARAM_TYPE(param->param_type) == PDO_PARAM_STR || PDO_PARAM_TYPE(param->param_type) == PDO_PARAM_STR_SIMPLE) && param->max_value_len <= 0 && !Z_ISNULL_P(parameter)) {
 		if (Z_TYPE_P(parameter) == IS_DOUBLE) {
 			char *p;
 			int len = spprintf(&p, 0, "%.*H", (int) EG(precision), Z_DVAL_P(parameter));
@@ -592,7 +592,7 @@ static inline void fetch_value(pdo_stmt_t *stmt, zval *dest, int colno, int *typ
 				ZVAL_NULL(dest);
 			} else if (value_len == 0) {
 				/* Warning, empty strings need to be passed as stream */
-				if (stmt->dbh->stringify || new_type == PDO_PARAM_STR) {
+				if (stmt->dbh->stringify || new_type == PDO_PARAM_STR || new_type == PDO_PARAM_STR_SIMPLE) {
 					zend_string *buf;
 					buf = php_stream_copy_to_mem((php_stream*)value, PHP_STREAM_COPY_ALL, 0);
 					if (buf == NULL) {
@@ -604,7 +604,7 @@ static inline void fetch_value(pdo_stmt_t *stmt, zval *dest, int colno, int *typ
 				} else {
 					php_stream_to_zval((php_stream*)value, dest);
 				}
-			} else if (!stmt->dbh->stringify && new_type != PDO_PARAM_STR) {
+			} else if (!stmt->dbh->stringify && new_type != PDO_PARAM_STR && new_type != PDO_PARAM_STR_SIMPLE) {
 				/* they gave us a string, but LOBs are represented as streams in PDO */
 				php_stream *stm;
 #ifdef TEMP_STREAM_TAKE_BUFFER
@@ -629,6 +629,7 @@ static inline void fetch_value(pdo_stmt_t *stmt, zval *dest, int colno, int *typ
 			break;
 
 		case PDO_PARAM_STR:
+		case PDO_PARAM_STR_SIMPLE:
 			if (value && !(value_len == 0 && stmt->dbh->oracle_nulls == PDO_NULL_EMPTY_STRING)) {
 				ZVAL_STRINGL(dest, value, value_len);
 				break;
@@ -646,6 +647,7 @@ static inline void fetch_value(pdo_stmt_t *stmt, zval *dest, int colno, int *typ
 				convert_to_boolean_ex(dest);
 				break;
 			case PDO_PARAM_STR:
+			case PDO_PARAM_STR_SIMPLE:
 				convert_to_string_ex(dest);
 				break;
 			case PDO_PARAM_NULL:
