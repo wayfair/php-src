@@ -59,6 +59,9 @@ enum pdo_param_type {
 	/* get_col ptr should point to start of the string buffer */
 	PDO_PARAM_STR,
 
+	/* Wayfair-, MSSQL-, DBLIB-specific type that indicates non-default behavior for quoting strings: '' instead of N'' */
+	PDO_PARAM_STR_SIMPLE,
+
 	/* get_col: when len is 0 ptr should point to a php_stream *,
 	 * otherwise it should behave like a string. Indicate a NULL field
 	 * value by setting the ptr to NULL */
