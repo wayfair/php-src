@@ -158,6 +158,7 @@ static int dblib_handle_quoter(pdo_dbh_t *dbh, const char *unquoted, size_t unqu
 	const char * hex = "0123456789abcdef";
 	int i;
 	char * q;
+	int is_simple_string = PDO_PARAM_TYPE(paramtype) == PDO_PARAM_STR_SIMPLE ? 1 : 0;
 	*quotedlen = 0;
 
 	/*
@@ -190,7 +191,13 @@ static int dblib_handle_quoter(pdo_dbh_t *dbh, const char *unquoted, size_t unqu
 	} else {
 		/* Alpha/Numeric Quoting */
 		*quotedlen += 2; /* +2 for opening, closing quotes */
+		if (!is_simple_string) { /* NVARCHAR */
+			*quotedlen++;
+		}
 		q  = *quoted = emalloc(*quotedlen);
+		if (!is_simple_string) { /* NVARCHAR */
+			*q++ = 'N';
+		}
 		*q++ = '\'';
 
 		for (i=0;i<unquotedlen;i++) {
