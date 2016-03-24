@@ -179,7 +179,7 @@ static int dblib_handle_quoter(pdo_dbh_t *dbh, const char *unquoted, size_t unqu
 		 * Will implicitly convert for all data types except Text, DateTime & SmallDateTime
 		 *
 		 */
-		*quotedlen = (unquotedlen * 2) + 2; /* 2 chars per byte +2 for "0x" prefix */
+		*quotedlen += (unquotedlen * 2) + 2; /* 2 chars per byte +2 for "0x" prefix */
 		q = *quoted = emalloc(*quotedlen);
 
 		*q++ = '0';
