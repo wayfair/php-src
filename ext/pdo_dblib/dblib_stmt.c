@@ -284,21 +284,23 @@ static int pdo_dblib_stmt_get_col(pdo_stmt_t *stmt, int colno, char **ptr,
 				}
 				case SQLDATETIME:
 				case SQLDATETIM4: {
-					DBDATEREC dateinfo;
+					int dl;
+					DBDATEREC di;
+					DBDATETIME dt;
 
-					if (coltype == SQLDATETIM4) {
-						DBDATETIME temp;
+					dbconvert(H->link, coltype, data, -1, SQLDATETIME, (LPBYTE) &dt, -1);
+					dbdatecrack(H->link, &di, &dt);
 
-						dbconvert(NULL, SQLDATETIM4, data, -1, SQLDATETIME, (LPBYTE)&temp, -1);
-						dbdatecrack(H->link, &dateinfo, &temp);
-					} else {
-					  dbdatecrack(H->link, &dateinfo, (DBDATETIME *)data);
-					}
-
-					spprintf(&tmp_data, 0, "%d-%02d-%02d %02d:%02d:%02d", dateinfo.year, dateinfo.month, dateinfo.day, dateinfo.hour, dateinfo.minute, dateinfo.second);
+					dl = spprintf((char**) &tmp_data, 20, "%d-%02d-%02d %02d:%02d:%02d",
+#if defined(PHP_DBLIB_IS_MSSQL) || defined(MSDBLIB)
+							di.year,     di.month,       di.day,        di.hour,     di.minute,     di.second
+#else
+							di.dateyear, di.datemonth+1, di.datedmonth, di.datehour, di.dateminute, di.datesecond
+#endif
+					);
 
 					MAKE_STD_ZVAL(zv);
-					ZVAL_STRINGL(zv, tmp_data, 19, 0);
+					ZVAL_STRINGL(zv, tmp_data, dl, 0);
 
 					break;
 				}
