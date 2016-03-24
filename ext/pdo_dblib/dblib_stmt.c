@@ -243,7 +243,7 @@ static int pdo_dblib_stmt_get_col(pdo_stmt_t *stmt, int colno, char **ptr,
 	if (data_len != 0 || data != NULL) {
 		if (stmt->dbh->stringify) {
 			switch (coltype) {
-        case SQLDATETIME:
+				case SQLDATETIME:
 				case SQLDATETIM4:
 				case SQLFLT4:
 				case SQLFLT8:
@@ -260,7 +260,7 @@ static int pdo_dblib_stmt_get_col(pdo_stmt_t *stmt, int colno, char **ptr,
 						ZVAL_STRING(zv, tmp_data, 0);
 					}
 					break;
-        }
+				}
 			}
 		}
 
