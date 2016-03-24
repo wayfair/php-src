@@ -159,7 +159,7 @@ static int dblib_handle_quoter(pdo_dbh_t *dbh, const char *unquoted, size_t unqu
 	int i;
 	char * q;
 	int is_simple_string = PDO_PARAM_TYPE(paramtype) == PDO_PARAM_STR_SIMPLE ? 1 : 0;
-	*quotedlen = 0;
+	*quotedlen = 1; // Allocate byte for terminal character
 
 	/*
 	 * Detect quoted length and if we should use binary encoding
@@ -192,7 +192,7 @@ static int dblib_handle_quoter(pdo_dbh_t *dbh, const char *unquoted, size_t unqu
 		/* Alpha/Numeric Quoting */
 		*quotedlen += 2; /* +2 for opening, closing quotes */
 		if (!is_simple_string) { /* NVARCHAR */
-			*quotedlen++;
+			++*quotedlen;
 		}
 		q  = *quoted = emalloc(*quotedlen);
 		if (!is_simple_string) { /* NVARCHAR */
