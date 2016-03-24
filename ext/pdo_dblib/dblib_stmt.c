@@ -345,7 +345,7 @@ static int pdo_dblib_stmt_get_col(pdo_stmt_t *stmt, int colno, char **ptr,
 
 					if (stmt->dbh->stringify) {
 						tmp_data_len = spprintf(&tmp_data, 0, "%.4f", money_value);
-						ZVAL_STRINGL(zv, tmp_data, tmp_data_len, 1);
+						ZVAL_STRINGL(zv, tmp_data, tmp_data_len, 0);
 					} else {
 						ZVAL_DOUBLE(zv, money_value);
 					}
