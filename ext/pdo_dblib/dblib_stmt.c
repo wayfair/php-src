@@ -377,14 +377,19 @@ static int pdo_dblib_stmt_get_col(pdo_stmt_t *stmt, int colno, char **ptr,
 	}
 
 	if (zv != NULL) {
-		*ptr = (char*)&zv;
+		char *retval = emalloc(sizeof(zv));
+		memcpy(retval, &zv, sizeof(zv));
+
+		*ptr = retval;
 		*len = sizeof(zval);
+
+		*caller_frees = 1;
 	} else {
 		*ptr = NULL;
 		*len = 0;
-	}
 
-	*caller_frees = 0;
+		*caller_frees = 0;
+	}
 
 	return 1;
 }
