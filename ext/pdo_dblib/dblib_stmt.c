@@ -344,6 +344,10 @@ static int pdo_dblib_stmt_get_col(pdo_stmt_t *stmt, int colno, char **ptr,
 					zv = emalloc(sizeof(zval));
 					ZVAL_DOUBLE(zv, money_value);
 
+					if (stmt->dbh->stringify) {
+						convert_to_string(zv);
+					}
+
 					break;
 				}
 #ifdef SQLUNIQUE
