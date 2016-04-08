@@ -188,6 +188,8 @@ PHP_RSHUTDOWN_FUNCTION(pdo_dblib)
 
 PHP_MINIT_FUNCTION(pdo_dblib)
 {
+	REGISTER_PDO_CLASS_CONST_LONG("DBLIB_ATTR_CONNECTION_TIMEOUT", (long)PDO_DBLIB_ATTR_CONNECTION_TIMEOUT);
+	REGISTER_PDO_CLASS_CONST_LONG("DBLIB_ATTR_QUERY_TIMEOUT", (long)PDO_DBLIB_ATTR_QUERY_TIMEOUT);
 	if (FAIL == dbinit()) {
 		return FAILURE;
 	}
@@ -200,8 +202,6 @@ PHP_MINIT_FUNCTION(pdo_dblib)
 	
 	dbsetifile()
 	dbsetmaxprocs()
-	dbsetlogintime()
-	dbsettime()
 	
 	 */
 
