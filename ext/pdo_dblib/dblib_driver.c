@@ -295,9 +295,10 @@ static int dblib_set_attr(pdo_dbh_t *dbh, zend_long attr, zval *val)
 {
 	switch(attr) {
 		case PDO_ATTR_TIMEOUT:
-			return 0;
+		case PDO_DBLIB_ATTR_QUERY_TIMEOUT:
+			return SUCCEED == dbsettime(zval_get_long(val)) ? 1 : 0;
 		default:
-			return 1;
+			return 0;
 	}
 
 }
