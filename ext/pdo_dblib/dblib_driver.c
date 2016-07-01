@@ -157,7 +157,7 @@ static int dblib_handle_quoter(pdo_dbh_t *dbh, const char *unquoted, size_t unqu
 
 	int useBinaryEncoding = 0;
 	const char * hex = "0123456789abcdef";
-	int i;
+	size_t i;
 	char * q;
 	int is_n_string = PDO_PARAM_TYPE(paramtype) == PDO_PARAM_STR ? 1 : 0; /* Whether to quote with N prefix, for NVARCHAR */
 	*quotedlen = 0;
