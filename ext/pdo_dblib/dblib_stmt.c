@@ -35,20 +35,20 @@
 
 
 /* {{{ pdo_dblib_get_field_name
- * 
+ *
  * Return the data type name for a given TDS number
- * 
+ *
  */
 static char *pdo_dblib_get_field_name(int type)
 {
-	/* 
-	 * I don't return dbprtype(type) because it does not fully describe the type 
+	/*
+	 * I don't return dbprtype(type) because it does not fully describe the type
 	 * (example: varchar is reported as char by dbprtype)
-	 * 
+	 *
 	 * FIX ME: Cache datatypes from server systypes table in pdo_dblib_handle_factory()
 	 * 		   to make this future proof.
 	 */
-	 
+
 	switch (type) {
 		case 31: return "nvarchar";
 		case 34: return "image";
@@ -102,7 +102,7 @@ static int pdo_dblib_stmt_cursor_closer(pdo_stmt_t *stmt TSRMLS_DC)
 
 	/* Cancel any pending results */
 	dbcancel(H->link);
-	
+
 	return 1;
 }
 
@@ -111,80 +111,100 @@ static int pdo_dblib_stmt_dtor(pdo_stmt_t *stmt TSRMLS_DC)
 	pdo_dblib_stmt *S = (pdo_dblib_stmt*)stmt->driver_data;
 
 	efree(S);
-		
+
 	return 1;
 }
 
-static int pdo_dblib_stmt_next_rowset(pdo_stmt_t *stmt TSRMLS_DC)
+static int pdo_dblib_stmt_next_rowset_no_cancel(pdo_stmt_t *stmt)
 {
 	pdo_dblib_stmt *S = (pdo_dblib_stmt*)stmt->driver_data;
 	pdo_dblib_db_handle *H = S->H;
 	RETCODE ret;
-	
+
 	ret = dbresults(H->link);
-	
+
 	if (FAIL == ret) {
-		pdo_raise_impl_error(stmt->dbh, stmt, "HY000", "PDO_DBLIB: dbresults() returned FAIL" TSRMLS_CC);		
+		pdo_raise_impl_error(stmt->dbh, stmt, "HY000", "PDO_DBLIB: dbresults() returned FAIL" TSRMLS_CC);
 		return 0;
 	}
-		
+
 	if(NO_MORE_RESULTS == ret) {
 		return 0;
 	}
-	
+
 	stmt->row_count = DBCOUNT(H->link);
 	stmt->column_count = dbnumcols(H->link);
-	
+
 	return 1;
 }
 
-static int pdo_dblib_stmt_execute(pdo_stmt_t *stmt TSRMLS_DC)
+static int pdo_dblib_stmt_next_rowset(pdo_stmt_t *stmt)
+{
+	pdo_dblib_stmt *S = (pdo_dblib_stmt*)stmt->driver_data;
+	pdo_dblib_db_handle *H = S->H;
+	RETCODE ret = SUCCESS;
+
+	// Ideally use dbcanquery here, but there is a bug in freetds's implementation of dbcanquery
+	// It has been resolved but is currently only available in nightly builds
+	while (NO_MORE_ROWS != ret) {
+		ret = dbnextrow(H->link);
+
+		if (FAIL == ret) {
+			pdo_raise_impl_error(stmt->dbh, stmt, "HY000", "PDO_DBLIB: dbnextrow() returned FAIL");
+			return 0;
+		}
+	}
+
+	return pdo_dblib_stmt_next_rowset_no_cancel(stmt);
+}
+
+static int pdo_dblib_stmt_execute(pdo_stmt_t *stmt)
 {
 	pdo_dblib_stmt *S = (pdo_dblib_stmt*)stmt->driver_data;
 	pdo_dblib_db_handle *H = S->H;
 	RETCODE ret;
-	
+
 	dbsetuserdata(H->link, (BYTE*) &S->err);
-	
+
 	pdo_dblib_stmt_cursor_closer(stmt TSRMLS_CC);
-	
+
 	if (FAIL == dbcmd(H->link, stmt->active_query_string)) {
 		return 0;
 	}
-	
+
 	if (FAIL == dbsqlexec(H->link)) {
 		return 0;
 	}
-	
-	ret = pdo_dblib_stmt_next_rowset(stmt TSRMLS_CC);
-	
+
+	ret = pdo_dblib_stmt_next_rowset_no_cancel(stmt);
+
 	stmt->row_count = DBCOUNT(H->link);
 	stmt->column_count = dbnumcols(H->link);
-	
+
 	return 1;
 }
 
 static int pdo_dblib_stmt_fetch(pdo_stmt_t *stmt,
 	enum pdo_fetch_orientation ori, long offset TSRMLS_DC)
 {
-	
+
 	RETCODE ret;
-	
+
 	pdo_dblib_stmt *S = (pdo_dblib_stmt*)stmt->driver_data;
 	pdo_dblib_db_handle *H = S->H;
-	
+
 	ret = dbnextrow(H->link);
-	
+
 	if (FAIL == ret) {
 		pdo_raise_impl_error(stmt->dbh, stmt, "HY000", "PDO_DBLIB: dbnextrow() returned FAIL" TSRMLS_CC);
 		return 0;
 	}
-		
+
 	if(NO_MORE_ROWS == ret) {
 		return 0;
 	}
-	
-	return 1;	
+
+	return 1;
 }
 
 static int pdo_dblib_stmt_describe(pdo_stmt_t *stmt, int colno TSRMLS_DC)
@@ -193,7 +213,7 @@ static int pdo_dblib_stmt_describe(pdo_stmt_t *stmt, int colno TSRMLS_DC)
 	pdo_dblib_db_handle *H = S->H;
 	struct pdo_column_data *col;
 	char *fname;
-	
+
 	if(colno >= stmt->column_count || colno < 0)  {
 		return FAILURE;
 	}
@@ -201,7 +221,7 @@ static int pdo_dblib_stmt_describe(pdo_stmt_t *stmt, int colno TSRMLS_DC)
 	if (colno == 0) {
 		S->computed_column_name_count = 0;
 	}
-	
+
 	col = &stmt->columns[colno];
 	fname = (char*)dbcolname(H->link, colno+1);
 
@@ -220,17 +240,17 @@ static int pdo_dblib_stmt_describe(pdo_stmt_t *stmt, int colno TSRMLS_DC)
 	}
 	col->maxlen = dbcollen(H->link, colno+1);
 	col->param_type = PDO_PARAM_ZVAL;
-		
+
 	return 1;
 }
 
 static int pdo_dblib_stmt_get_col(pdo_stmt_t *stmt, int colno, char **ptr,
 	 unsigned long *len, int *caller_frees TSRMLS_DC)
 {
-	
+
 	pdo_dblib_stmt *S = (pdo_dblib_stmt*)stmt->driver_data;
 	pdo_dblib_db_handle *H = S->H;
-	
+
 	int coltype;
 	char *data, *tmp_data;
 	unsigned int data_len, tmp_data_len;
