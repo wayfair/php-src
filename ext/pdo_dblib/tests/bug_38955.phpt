@@ -2,7 +2,6 @@
  PDO_DBLIB driver does not support transactions
 --SKIPIF--
 <?php
-die('skip for Wayfair');
 if (!extension_loaded('pdo_dblib')) die('skip not loaded');
 require dirname(__FILE__) . '/config.inc';
 ?>
