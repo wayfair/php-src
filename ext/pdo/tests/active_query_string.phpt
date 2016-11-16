@@ -35,20 +35,20 @@ var_dump($stmt->activeQueryString()); // will return unparsed query before execu
 $stmt->execute();
 
 // will return parsed query after execution
-var_dump($stmt->activeQueryString() == "SELECT " . $quoted_true . ", 123, 'foo', NULL");
+var_dump($stmt->activeQueryString() == "SELECT " . $quoted_true . ", 123, N'foo', NULL");
 // can be called repeatedly
-var_dump($stmt->activeQueryString() == "SELECT " . $quoted_true . ", 123, 'foo', NULL");
+var_dump($stmt->activeQueryString() == "SELECT " . $quoted_true . ", 123, N'foo', NULL");
 
 $stmt->execute();
 
 // works if the statement is executed again
-var_dump($stmt->activeQueryString() == "SELECT " . $quoted_true . ", 123, 'foo', NULL");
+var_dump($stmt->activeQueryString() == "SELECT " . $quoted_true . ", 123, N'foo', NULL");
 
 $stmt->bindValue(':int', 456, PDO::PARAM_INT);
 $stmt->execute();
 
 // works with altered values
-var_dump($stmt->activeQueryString() == "SELECT " . $quoted_true . ", 456, 'foo', NULL");
+var_dump($stmt->activeQueryString() == "SELECT " . $quoted_true . ", 456, N'foo', NULL");
 
 ?>
 --EXPECT--
